@@ -1,0 +1,6 @@
+.venv/
+__pycache__/
+source.generated.py
+results/
+logs/
+build-*.log

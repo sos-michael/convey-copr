@@ -1,0 +1,102 @@
+%global commit @COMMIT@
+%global shortcommit @SHORTCOMMIT@
+%global __provides_exclude_from ^%{_libdir}/convey/.*\.so.*$
+%global __requires_exclude ^libconvey-client-.*\.so.*$
+
+Name:           convey
+Version:        @VERSION@
+Release:        2%{?dist}
+Summary:        Conversation-based email for the GNOME desktop
+License:        LGPL-2.1-or-later AND CC-BY-3.0 AND CC-BY-SA-3.0
+URL:            https://gitlab.gnome.org/donnybeelo/convey
+Source0:        convey-%{commit}.tar.gz
+
+BuildRequires:  gcc
+BuildRequires:  meson >= 1.7
+BuildRequires:  ninja-build
+BuildRequires:  vala >= 0.56
+BuildRequires:  gettext
+BuildRequires:  libstemmer-devel
+BuildRequires:  libxml2
+BuildRequires:  yelp-tools
+BuildRequires:  desktop-file-utils
+BuildRequires:  appstream
+BuildRequires:  dbus-daemon
+BuildRequires:  xorg-x11-server-Xvfb
+BuildRequires:  xorg-x11-xauth
+BuildRequires:  glibc-langpack-en
+BuildRequires:  gnutls-utils
+BuildRequires:  pkgconfig(cairo)
+BuildRequires:  pkgconfig(enchant-2) >= 2.1
+BuildRequires:  pkgconfig(folks) >= 0.11
+BuildRequires:  pkgconfig(gck-2)
+BuildRequires:  pkgconfig(gcr-4)
+BuildRequires:  pkgconfig(gee-0.8) >= 0.8.5
+BuildRequires:  pkgconfig(gio-2.0) >= 2.80
+BuildRequires:  pkgconfig(glib-2.0) >= 2.80
+BuildRequires:  pkgconfig(gmime-3.0) >= 3.2.4
+BuildRequires:  pkgconfig(goa-1.0)
+BuildRequires:  pkgconfig(gstreamer-1.0)
+BuildRequires:  pkgconfig(gstreamer-play-1.0)
+BuildRequires:  pkgconfig(gthread-2.0)
+BuildRequires:  pkgconfig(gtk4) >= 4.16
+BuildRequires:  pkgconfig(icu-uc) >= 60
+BuildRequires:  pkgconfig(iso-codes)
+BuildRequires:  pkgconfig(javascriptcoregtk-6.0) >= 2.40
+BuildRequires:  pkgconfig(json-glib-1.0)
+BuildRequires:  pkgconfig(libadwaita-1) >= 1.7
+BuildRequires:  pkgconfig(libpeas-2)
+BuildRequires:  pkgconfig(libsecret-1)
+BuildRequires:  pkgconfig(libsoup-3.0)
+BuildRequires:  pkgconfig(libunwind)
+BuildRequires:  pkgconfig(libunwind-generic)
+BuildRequires:  pkgconfig(libxml-2.0)
+BuildRequires:  pkgconfig(libytnef) >= 1.9.3
+BuildRequires:  pkgconfig(sqlite3) >= 3.24
+BuildRequires:  pkgconfig(webkitgtk-6.0) >= 2.40
+BuildRequires:  pkgconfig(webkitgtk-web-process-extension-6.0) >= 2.40
+Requires:       iso-codes
+Requires:       glib-networking
+Requires:       hicolor-icon-theme
+Recommends:     gnome-keyring
+Recommends:     yelp
+
+%description
+Convey is an email application built around conversations, for the GNOME
+desktop. It is an independent hard fork of Geary. This package tracks the
+upstream main branch and is built from the exact revision %{commit}.
+
+%prep
+%autosetup -n convey-%{commit}
+
+%build
+%meson -Dprofile=release -Drevno=%{shortcommit} -Dvaladoc=disabled --wrap-mode=nodownload
+%meson_build
+
+%install
+%meson_install
+# Action icons are already embedded in the application's GResource. Installing
+# the generic names globally conflicts with Geary and other icon packages.
+rm -rf %{buildroot}%{_datadir}/icons/hicolor/scalable/actions
+%find_lang %{name} --with-gnome
+
+%check
+export GTK_A11Y=none GSK_RENDERER=cairo LIBGL_ALWAYS_SOFTWARE=1
+# The outer COPR mock container cannot mount /proc for nested bubblewrap.
+# This override is scoped to build-time tests and is not installed with the app.
+export WEBKIT_DISABLE_SANDBOX_THIS_IS_DANGEROUS=1
+dbus-run-session -- xvfb-run -a meson test -C %{_vpath_builddir} --print-errorlogs --timeout-multiplier 3
+
+%files -f %{name}.lang
+%license COPYING COPYING.icons COPYING.sounds
+%doc README.md AUTHORS NEWS
+%{_bindir}/convey
+%{_libdir}/convey/
+%{_datadir}/convey/
+%{_datadir}/applications/net.donnybeelo.Convey.desktop
+%{_datadir}/applications/convey-autostart.desktop
+%{_datadir}/dbus-1/services/net.donnybeelo.Convey.service
+%{_datadir}/glib-2.0/schemas/net.donnybeelo.Convey.gschema.xml
+%{_datadir}/metainfo/net.donnybeelo.Convey.metainfo.xml
+%{_datadir}/icons/hicolor/scalable/apps/net.donnybeelo.Convey.svg
+%{_datadir}/icons/hicolor/symbolic/apps/net.donnybeelo.Convey-symbolic.svg

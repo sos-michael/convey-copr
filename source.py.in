@@ -1,0 +1,39 @@
+#!/usr/bin/python3
+"""COPR custom source script; produces a spec and a commit-pinned archive."""
+import datetime
+import base64
+import zlib
+import pathlib
+import re
+import subprocess
+import tempfile
+
+COMMIT = @PIN@
+SPEC = zlib.decompress(base64.b64decode(@SPEC@)).decode()
+UPSTREAM = "https://gitlab.gnome.org/donnybeelo/convey.git"
+
+def git(*args):
+    return subprocess.check_output(["git", *args], text=True).strip()
+
+out = pathlib.Path.cwd() / "results"
+out.mkdir(exist_ok=True)
+with tempfile.TemporaryDirectory() as tmp:
+    git("init", tmp)
+    git("-C", tmp, "fetch", "--depth=1", UPSTREAM, COMMIT)
+    commit = git("-C", tmp, "rev-parse", "FETCH_HEAD")
+    if commit != COMMIT:
+        raise RuntimeError("Fetched revision does not match requested commit")
+    meson = git("-C", tmp, "show", f"{commit}:meson.build")
+    upstream_version = re.search(r"version:\s*'([^']+)'", meson).group(1)
+    if not re.fullmatch(r"[0-9]+(?:[.\-][0-9]+)*", upstream_version):
+        raise RuntimeError(f"Review RPM version mapping for {upstream_version!r}")
+    # RPM forbids '-' in Version. '^' sorts a snapshot after its base release
+    # but before the next release. UTC commit time makes reruns reproducible.
+    epoch = int(git("-C", tmp, "show", "-s", "--format=%ct", commit))
+    stamp = datetime.datetime.fromtimestamp(epoch, datetime.timezone.utc).strftime("%Y%m%d%H%M%S")
+    version = upstream_version.replace("-", ".") + f"^{stamp}git{commit[:12]}"
+    archive = out / f"convey-{commit}.tar.gz"
+    git("-C", tmp, "archive", "--format=tar.gz", f"--prefix=convey-{commit}/", f"--output={archive}", commit)
+    spec = SPEC.replace("@COMMIT@", commit).replace("@SHORTCOMMIT@", commit[:12]).replace("@VERSION@", version)
+    (out / "convey.spec").write_text(spec)
+    print(f"Prepared convey {version} from {commit}")
