@@ -1,6 +1,6 @@
 # Convey RPMs
 
-Unofficial [Convey](https://gitlab.gnome.org/donnybeelo/convey) packages for Fedora 44 and Rawhide (x86_64).
+Unofficial [Convey](https://gitlab.gnome.org/donnybeelo/convey) packages for Fedora 44, Fedora 45, and Rawhide (x86_64).
 
 ```sh
 sudo dnf copr enable grantson/convey

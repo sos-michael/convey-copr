@@ -88,7 +88,7 @@ def main():
     # local state file is needed to prevent duplicates.
     build = client.build_proxy.create_from_custom(
         OWNER, PROJECT, script,
-        script_chroot="fedora-44-x86_64",
+        script_chroot="fedora-45-x86_64",
         script_builddeps=["git-core", "python3"],
         script_resultdir="results",
     )
